@@ -44,3 +44,22 @@ println("FDM - preconditioned")
 println(norm2(A_fd, b_fd, x_fd_p))
 println("FEM - preconditioned")
 println(norm2(A_fe, b_fe, x_fe_p))
+
+(x_fv_dbg, hs_fv_dbg) = bicgstab(A_fv, b_fv, debug = true)
+(x_fd_dbg, hs_fd_dbg) = bicgstab(A_fd, b_fd, debug = true)
+(x_fe_dbg, hs_fe_dbg) = bicgstab(A_fe, b_fe, debug = true)
+
+(x_fv_p_dbg, hs_fv_p_dbg) = bicgstab(A_fv, b_fv, K = K_fv, debug = true)
+(x_fd_p_dbg, hs_fd_p_dbg) = bicgstab(A_fd, b_fd, K = K_fd, debug = true)
+(x_fe_p_dbg, hs_fe_p_dbg) = bicgstab(A_fe, b_fe, K = K_fe, debug = true)
+
+println("FEM - no preconditioning - debugged")
+println(norm2(A_fe, b_fe, x_fe_dbg))
+println("Number of iterations: $(hs_fe_dbg.nIters)")
+println(last(hs_fe_dbg.residuals))
+
+println("FVM - preconditioned - debugged")
+println(norm2(A_fv, b_fv, x_fv_p_dbg))
+println("Number of iterations: $(hs_fv_p_dbg.nIters)")
+println(last(hs_fv_p_dbg.residuals))
+
