@@ -1,0 +1,253 @@
+Wnioski
+Wygrywam z IterativeSolvers
+Przegrywam z Krylov
+ - pamięciowo przegrywam (najgorzej wypadają z prekon. nawet do 2 razy więcej pamięci)
+ - w metodach z prekondycjonowaniem wygrywam czasowo i to znacznie
+ - czasowo jestem zawsze porównywalny lub lepszy
+
+A_fv, b_fv = fvmproblem(1500)
+A_fd, b_fd = fdmproblem(45)
+A_fe, b_fe = femproblem(24)
+
+# MY
+
+julia> @benchmark bicgstab(A_fd, b_fd)
+BenchmarkTools.Trial: 2735 samples with 1 evaluation.
+ Range (min … max):  1.371 ms …   5.123 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     1.704 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.806 ms ± 373.840 μs  ┊ GC (mean ± σ):  0.25% ± 2.42%
+
+     ▁█▄▂▁                                                     
+  ▇▇▆██████▇▇▆▆▆▆▆▅▆▆▇▇▇▅▅▅▅▄▃▃▃▃▃▃▃▃▃▂▂▂▂▂▃▂▂▂▂▂▁▂▂▂▂▂▂▂▂▂▂▂ ▄
+  1.37 ms         Histogram: frequency by time        3.18 ms <
+
+ Memory estimate: 175.70 KiB, allocs estimate: 16.
+
+
+julia> @benchmark bicgstab(A_fe, b_fe)
+BenchmarkTools.Trial: 1818 samples with 1 evaluation.
+ Range (min … max):  1.920 ms …  19.779 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     2.500 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   2.722 ms ± 890.376 μs  ┊ GC (mean ± σ):  0.07% ± 1.45%
+
+  ▃ ▄█▃▄▂                                                      
+  ████████▇▇▇▇▅▄▆▅▇▇▇▆▆▅▆▅▅▄▃▃▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▁▂▁▂▂▁▂▂▂ ▄
+  1.92 ms         Histogram: frequency by time        5.65 ms <
+
+ Memory estimate: 105.20 KiB, allocs estimate: 16.
+
+
+julia> @benchmark bicgstab(A_fv, b_fv, K = K_fv)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):   94.880 μs …  3.257 ms  ┊ GC (min … max): 0.00% … 84.54%
+ Time  (median):     123.610 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   144.909 μs ± 96.287 μs  ┊ GC (mean ± σ):  2.89% ±  4.75%
+
+     ▅▁█                                                        
+  ▁▂▅███▅▃▃▄▅▄▆▆▄▃▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▂
+  94.9 μs         Histogram: frequency by time          383 μs <
+
+ Memory estimate: 142.84 KiB, allocs estimate: 17.
+
+
+julia> @benchmark bicgstab(A_fd, b_fd, K = K_fd)
+BenchmarkTools.Trial: 4759 samples with 1 evaluation.
+ Range (min … max):  522.704 μs …   5.883 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     979.690 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):     1.023 ms ± 439.632 μs  ┊ GC (mean ± σ):  0.65% ± 3.60%
+
+   ▂▄▇▂        ▃▇█▂                                              
+  ▄████▇▆▄▅▅▆▇█████▇▇▄▃▃▃▃▃▃▂▃▃▂▂▂▃▂▂▂▂▂▂▂▂▂▂▂▁▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
+  523 μs           Histogram: frequency by time         2.53 ms <
+
+ Memory estimate: 175.84 KiB, allocs estimate: 17.
+
+julia> @benchmark bicgstab(A_fe, b_fe, K = K_fe)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  135.396 μs …   2.930 ms  ┊ GC (min … max): 0.00% … 83.77%
+ Time  (median):     156.953 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   197.105 μs ± 115.404 μs  ┊ GC (mean ± σ):  1.73% ±  3.92%
+
+  █                                                              
+  █▇█▃▃▂▂▂▂▂▂▂▃▂▂▂▃▃▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▂
+  135 μs           Histogram: frequency by time          520 μs <
+
+ Memory estimate: 105.34 KiB, allocs estimate: 17.
+
+
+##########################################################################
+##########################################################################
+##########################################################################
+
+# IterativeSolvers
+
+
+julia> @benchmark bicgstabl(A_fd, b_fd, 1, max_mv_products = MAX_MV)
+BenchmarkTools.Trial: 2359 samples with 1 evaluation.
+ Range (min … max):  1.408 ms …   5.499 ms  ┊ GC (min … max): 0.00% … 29.16%
+ Time  (median):     1.877 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   2.098 ms ± 618.856 μs  ┊ GC (mean ± σ):  2.91% ±  8.25%
+
+   ▂▅█▆▂                                                       
+  ▄██████▇▇▆▆▅▄▅▅▄▄▅▅▆▇▆▆▅▅▆▄▄▄▃▄▃▃▃▃▂▃▂▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▁▂ ▃
+  1.41 ms         Histogram: frequency by time        4.34 ms <
+
+ Memory estimate: 1.69 MiB, allocs estimate: 158.
+
+
+julia> @benchmark bicgstabl(A_fe, b_fe, 1, max_mv_products = MAX_MV)
+BenchmarkTools.Trial: 1582 samples with 1 evaluation.
+ Range (min … max):  2.024 ms …  10.821 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     2.871 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   3.137 ms ± 885.167 μs  ┊ GC (mean ± σ):  2.84% ± 7.84%
+
+    ▃▅▅██▇▆▆▅▄▃▂▃▁ ▂                                           
+  ▃▆██████████████▇█▆▆▆▆▇▆▄▆▆▆▆▆▄▅▅▄▄▃▄▃▄▃▄▃▃▃▃▂▃▂▂▃▃▂▂▂▁▂▁▂▂ ▄
+  2.02 ms         Histogram: frequency by time        6.14 ms <
+
+ Memory estimate: 1.97 MiB, allocs estimate: 298.
+
+julia> @benchmark bicgstabl(A_fv, b_fv, 1, max_mv_products = MAX_MV, Pl = A_fv_prec)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  101.496 μs …   3.653 ms  ┊ GC (min … max): 0.00% … 92.81%
+ Time  (median):     114.394 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   141.624 μs ± 107.774 μs  ┊ GC (mean ± σ):  3.05% ±  4.57%
+
+  █▂                                                             
+  ██▄▂▂▂▂▃▃▄▅▃▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▁
+  101 μs           Histogram: frequency by time          470 μs <
+
+ Memory estimate: 119.44 KiB, allocs estimate: 23.
+
+julia> @benchmark bicgstabl(A_fd, b_fd, 1, max_mv_products = MAX_MV, Pl = A_fd_prec)
+BenchmarkTools.Trial: 2657 samples with 1 evaluation.
+ Range (min … max):  1.131 ms …   5.200 ms  ┊ GC (min … max): 0.00% … 55.04%
+ Time  (median):     1.740 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.859 ms ± 569.893 μs  ┊ GC (mean ± σ):  0.64% ±  3.85%
+
+    ▃██▆▄▂▁            ▁                                       
+  ▄▆███████▆█▆█▆▆▇▆▆▇█▇██▇▇▆▆▅▅▄▄▃▃▃▃▃▂▂▂▂▂▁▂▂▂▂▂▂▂▂▁▁▂▁▁▁▁▁▁ ▃
+  1.13 ms         Histogram: frequency by time        3.69 ms <
+
+ Memory estimate: 322.62 KiB, allocs estimate: 38.
+
+
+julia> @benchmark bicgstabl(A_fe, b_fe, 1, max_mv_products = MAX_MV, Pl = A_fe_prec)
+BenchmarkTools.Trial: 317 samples with 1 evaluation.
+ Range (min … max):  11.669 ms … 24.354 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     15.488 ms              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   15.755 ms ±  2.139 ms  ┊ GC (mean ± σ):  0.81% ± 2.55%
+
+           ▂▁▃▃ █  ▂▃ ▂▃▃ ▂▁                                   
+  ▃▁▄▃▃▄▆▇▇████▆██▇█████████▇▇▅█▇▇▃▅▄▆▃▄▃▃▆▁▃▃▄▁▃▃▁▁▃▁▁▃▁▁▁▃▃ ▄
+  11.7 ms         Histogram: frequency by time          23 ms <
+
+ Memory estimate: 2.89 MiB, allocs estimate: 433.
+
+##########################################################################
+##########################################################################
+##########################################################################
+
+# Krylov
+
+julia> @benchmark bicgstab(A_fd, b_fd, itmax = MAX_ITER)
+BenchmarkTools.Trial: 3168 samples with 1 evaluation.
+ Range (min … max):  1.257 ms …   4.826 ms  ┊ GC (min … max): 0.00% … 35.94%
+ Time  (median):     1.449 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.562 ms ± 330.721 μs  ┊ GC (mean ± σ):  0.17% ±  1.84%
+
+  █▆▁▁▂                                                        
+  █████▇▆▅▆▅▅▅▅▅▄▅▄▄▄▄▄▃▄▄▄▄▄▃▃▃▃▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▂▂ ▃
+  1.26 ms         Histogram: frequency by time        2.81 ms <
+
+ Memory estimate: 88.36 KiB, allocs estimate: 17.
+
+julia> @benchmark bicgstab(A_fe, b_fe, itmax = MAX_ITER)
+BenchmarkTools.Trial: 1646 samples with 1 evaluation.
+ Range (min … max):  2.420 ms …   5.393 ms  ┊ GC (min … max): 0.00% … 29.25%
+ Time  (median):     2.891 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   3.015 ms ± 485.543 μs  ┊ GC (mean ± σ):  0.03% ±  0.72%
+
+   ▄▄▄▅▄▆█▆▅▆▄▇▅▂▁▁                                            
+  ▆█████████████████▇▆█▅▅▅▄▅▅▄▄▄▃▄▄▄▅▄▃▅▃▃▃▃▄▃▃▂▂▃▂▂▃▂▂▂▁▂▂▂▂ ▄
+  2.42 ms         Histogram: frequency by time        4.76 ms <
+
+ Memory estimate: 53.11 KiB, allocs estimate: 17.
+
+# precon 1
+
+julia> @benchmark bicgstab(A_fv, b_fv, itmax = MAX_ITER, M = A_fv_prec, ldiv = true)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):   88.650 μs …  3.899 ms  ┊ GC (min … max): 0.00% … 92.21%
+ Time  (median):     116.619 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   131.701 μs ± 85.420 μs  ┊ GC (mean ± σ):  2.29% ±  3.71%
+
+      ▃█▄▆█                                                     
+  ▁▁▂▅██████▅▅▄▄▄▅▇▆▅▆█▅▃▃▃▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▂
+  88.6 μs         Histogram: frequency by time          270 μs <
+
+ Memory estimate: 83.92 KiB, allocs estimate: 18.
+
+
+julia> @benchmark bicgstab(A_fd, b_fd, itmax = MAX_ITER, M = A_fd_prec, ldiv = true)
+BenchmarkTools.Trial: 2907 samples with 1 evaluation.
+ Range (min … max):  1.047 ms …   7.210 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     1.522 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.697 ms ± 642.238 μs  ┊ GC (mean ± σ):  0.21% ± 2.24%
+
+  ▄▁█▇▁                                                        
+  ██████▅▄▅▄▅▅▄▅▅▆▅▅▅▅▄▄▄▃▃▃▂▂▂▃▃▂▂▂▂▂▂▂▂▂▂▂▂▁▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
+  1.05 ms         Histogram: frequency by time        3.89 ms <
+
+ Memory estimate: 103.17 KiB, allocs estimate: 18.
+
+
+julia> @benchmark bicgstab(A_fe, b_fe, itmax = MAX_ITER, M = A_fe_prec, ldiv = true)
+BenchmarkTools.Trial: 328 samples with 1 evaluation.
+ Range (min … max):  12.427 ms … 23.596 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     14.767 ms              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   15.238 ms ±  1.973 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+       ▁▄▄▄█▆▇▂▂ ▂▅▂ ▁▃  ▁                                     
+  ▄▇▃▆▆████████████████▆▇█▅▆▁▅▃█▄▁▅▃▄▃▃▃▅▃▃▃▅▁▁▁▁▄▃▁▄▁▁▃▃▁▃▁▃ ▄
+  12.4 ms         Histogram: frequency by time        21.6 ms <
+
+ Memory estimate: 62.05 KiB, allocs estimate: 18.
+
+# precon 2
+
+julia> @benchmark bicgstab(A_fv, b_fv, itmax = MAX_ITER, N = A_fv_prec, ldiv = true)
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):   77.818 μs …  2.422 ms  ┊ GC (min … max): 0.00% … 80.68%
+ Time  (median):     106.581 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   118.401 μs ± 88.293 μs  ┊ GC (mean ± σ):  2.46% ±  3.46%
+
+      ▁ ▆█                                                      
+  ▁▂▃▆████▆▄▄▃▄▅▆▅▅▇▇▅▄▃▃▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▂
+  77.8 μs         Histogram: frequency by time          239 μs <
+
+ Memory estimate: 83.92 KiB, allocs estimate: 18.
+
+julia> @benchmark bicgstab(A_fd, b_fd, itmax = MAX_ITER, N = A_fd_prec, ldiv = true)
+BenchmarkTools.Trial: 3420 samples with 1 evaluation.
+ Range (min … max):  964.019 μs …   4.762 ms  ┊ GC (min … max): 0.00% … 60.42%
+ Time  (median):       1.274 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):     1.443 ms ± 498.424 μs  ┊ GC (mean ± σ):  0.23% ±  2.33%
+
+  █▂▅▃▁                                                          
+  ██████▇▅▆▆▆▄▄▃▃▄▃▄▄▄▄▄▄▄▃▃▃▃▂▂▂▂▂▂▂▁▁▂▁▂▁▂▁▁▁▁▁▂▁▁▁▂▁▁▁▁▁▁▁▁▁ ▂
+  964 μs           Histogram: frequency by time         3.23 ms <
+
+ Memory estimate: 103.17 KiB, allocs estimate: 18.
+
+julia> @benchmark bicgstab(A_fe, b_fe, itmax = MAX_ITER, N = A_fe_prec, ldiv = true)
+BenchmarkTools.Trial: 3219 samples with 1 evaluation.
+ Range (min … max):  1.095 ms …   5.814 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     1.375 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.533 ms ± 427.221 μs  ┊ GC (mean ± σ):  0.16% ± 1.83%
+
+  ▅ ▂█▃                                                        
+  █▇████▅▅▅▄▄▄▃▄▃▃▃▃▃▄▄▅▄▃▅▅▄▃▃▂▃▂▂▂▂▂▂▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▂
+  1.1 ms          Histogram: frequency by time           3 ms <
+
+ Memory estimate: 62.05 KiB, allocs estimate: 18.

@@ -101,7 +101,7 @@ function update_history(
   ) where {T <: Number, ITER <: Number}
 
   id = i + one(i)
-  history.xs[id] = xIter
+  history.xs[id] = copy(xIter)
   history.residuals[id] = square_sum(r)
 end
 
@@ -111,6 +111,7 @@ function tidy_history(
   ) where {T <: Number, ITER <: Number}
 
   nVals = nIters + one(nIters)
+  # views ? this is whatever
   History(history.xs[1 : nVals], history.residuals[1 : nVals], nIters)
 end
 
@@ -132,10 +133,12 @@ function _bicgstab(
   i = one(ITER)
   v = zeros(T, n)
   p = zeros(T, n)
-  y = zeros(T, n)
-  s = zeros(T, n)
-  z = zeros(T, n)
-  t = zeros(T, n)
+
+  # undef are faster but all in all this is useless xd
+  y = Vector{T}(undef, n)
+  s = Vector{T}(undef, n)
+  z = Vector{T}(undef, n)
+  t = r # sztuczka - oszczędza wektor
   rho = dot(r_shadow, r)
   while true
 
