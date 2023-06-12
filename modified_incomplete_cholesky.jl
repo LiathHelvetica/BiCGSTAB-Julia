@@ -52,6 +52,6 @@ function modified_incomplete_cholesky(A::SparseMatrixCSC{T, TID})::ILUFactorizat
 
 
     end
-    
-    return ilu(L)
+
+    return ILUFactorization(A, L)
 end
