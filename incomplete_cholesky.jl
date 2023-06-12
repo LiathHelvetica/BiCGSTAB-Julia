@@ -29,7 +29,7 @@ function incomplete_cholesky(A::SparseMatrixCSC{T, TID})::ILUFactorization{T, TI
     end
     
     L_sparse = sparse(L)
-    lu_factorization = ilu(L_sparse)
+    lu_factorization = ILUFactorization(A, L_sparse)
     return lu_factorization
 
 end
