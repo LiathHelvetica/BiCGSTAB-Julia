@@ -4,7 +4,7 @@ function modified_incomplete_cholesky(A::SparseMatrixCSC{T, TID})::ILUFactorizat
     n = size(A, 1)
     L = spzeros(T, n, n)
     ffj = 0.01
-    println(n)
+
     
     for j = 1:n
         L[j, j] = sqrt(A[j, j])
@@ -28,21 +28,28 @@ function modified_incomplete_cholesky(A::SparseMatrixCSC{T, TID})::ILUFactorizat
         for i = j+1:n
             w[i] /= L[j, j]
         end
- 
-        ffj = ffj * norm(w)
-       # print(ffj)
-
+        
+        ffj = ffj * norm(w,2)
+       
         for i = j+1:n
             if abs(w[i]) < ffj
                 w[i] = zero(T)
             end
         end
+        
+        
+        p = Int(floor(maximum(A[:, j])))
+
+        for k = 1:p
+            
+            L[k, j] -= w[k]          
+        end       
 
             
         for i = j+1:n
             A[i, i] -= L[i,j]^2          
         end
-# muszę dokończyć z p
+
 
     end
     
