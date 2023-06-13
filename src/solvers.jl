@@ -48,7 +48,7 @@ Cholesky poprzez zwykłe indeksowanie może być efektywny jeśli select w kolum
 To również utrzymuje się dla kompresji rzędowej
 Więc w metodzie powinno się dać pójść z kompresjonowanymi rzędami
 
-Czy istnieje sposó” aby łatwo podejrzeć ciało metody
+Czy istnieje sposób aby łatwo podejrzeć ciało metody
 
 =#
 
@@ -57,10 +57,33 @@ import IncompleteLU: ILUFactorization
 
 export bicgstab, bicgstab!
 
-struct History{T <: Number, ITER <: Number}
+@enum STATUS converged=0 running=1 reset=2 reached_limit=3
+
+mutable struct History{T <: Number, ITER <: Number}
+  
   xs :: Vector{AbstractVector{T}}
   residuals :: Vector{T}
   nIters :: ITER
+  ωs :: Vector{T}
+  rhos :: Vector{T}
+  αDivs :: Vector{T}
+  ωDivs :: Vector{T}
+  leadingCoeffs :: Vector{T}
+  nResets :: ITER
+  status :: STATUS
+
+  History{T, ITER}() where {T <: Number, ITER <: Number} = new(
+    Vector{Vector{T}}(), 
+    Vector{T}(),
+    zero(ITER),
+    Vector{T}(),
+    Vector{T}(),
+    Vector{T}(),
+    Vector{T}(),
+    Vector{T}(),
+    zero(ITER),
+    running
+  )
 end
 
 function square_sum(vv :: AbstractVector{T}) :: T where {T <: Number}
@@ -71,76 +94,84 @@ function square_sum(vv :: AbstractVector{T}) :: T where {T <: Number}
   out
 end
 
-function init_history(
+function init_history!(
+    history :: History{T, ITER},
     debug :: Bool,
     nIter :: ITER,
     xIter :: AbstractVector{T},
-    r :: AbstractVector{T}
-  ) :: History{T, ITER} where {T <: Number, ITER <: Number}
+    r :: AbstractVector{T},
+    rho :: T,
+    ω :: T
+  ) where {T <: Number, ITER <: Number}
 
   if debug
-    # undef? is it effective?
-    out = History{T, ITER}(
-      Vector{Vector{T}}(undef, nIter + one(nIter)), 
-      Vector{T}(undef, nIter + one(nIter)),
-      zero(ITER)
-    )
-    out.xs[1] = xIter
-    out.residuals[1] = square_sum(r)
-    return out
+    push!(history.xs, xIter)
+    push!(history.residuals, square_sum(r))
+    push!(history.rhos, rho)
+    push!(history.ωs, ω)
   end 
-  
-  History{T, ITER}(Vector{Vector{T}}(), Vector{T}(), zero(ITER))
 end
 
-function update_history(
+function update_history!(
     history :: History{T, ITER},
     xIter :: AbstractVector{T},
     r :: AbstractVector{T},
-    i :: ITER
+    i :: ITER,
+    ω :: T,
+    rho :: T,
+    αDiv :: T,
+    ωDiv :: T,
+    leadingCoeff :: T
   ) where {T <: Number, ITER <: Number}
 
   id = i + one(i)
-  history.xs[id] = copy(xIter)
-  history.residuals[id] = square_sum(r)
+  push!(history.xs, copy(xIter))
+  push!(history.residuals, square_sum(r))
+  push!(history.ωs, ω)
+  push!(history.rhos, rho)
+  push!(history.αDivs, αDiv)
+  push!(history.ωDivs, ωDiv)
+  push!(history.leadingCoeffs, leadingCoeff)
 end
 
-function tidy_history(
-    history :: History{T, ITER},
-    nIters :: ITER
-  ) where {T <: Number, ITER <: Number}
+function observable_failure(
+    observablePrecision :: T,
+    ω :: T,
+    rho :: T,
+    αDiv :: T,
+    ωDiv :: T,
+    leadingCoeff :: T
+  ) :: Bool where {T <: Number}
 
-  nVals = nIters + one(nIters)
-  # views ? this is whatever
-  History(history.xs[1 : nVals], history.residuals[1 : nVals], nIters)
+  ω < observablePrecision || rho < observablePrecision || αDiv < observablePrecision || ωDiv < observablePrecision || leadingCoeff < observablePrecision
 end
 
-function _bicgstab(
+function _bicgstab( 
     xIter :: AbstractVector{T},
     A :: AbstractMatrix{T},
-    b :: AbstractVector{T};
+    b :: AbstractVector{T},
+    history :: History,
+    nIter :: ITER,
+    debug :: Bool,
+    v :: AbstractVector{T},
+    p :: AbstractVector{T},
+    y :: AbstractVector{T},
+    s :: AbstractVector{T},
+    z :: AbstractVector{T};
     K :: Union{AbstractMatrix{T}, ILUFactorization{T, TID}, UniformScaling{Bool}} = I,
     ϵ :: T = sqrt(eps(T)),
-    nIter :: ITER = UInt16(1000),
-    debug :: Bool = false
+    observablePrecision :: T = 10e-4 # questionable
   ) where {T <: Number, TID <: Integer, ITER <: Number}
 
-  n = length(xIter)
   r = b - A * xIter
-  history = init_history(debug, nIter, xIter, r)
   r_shadow = copy(r) # questionable - should be different value
   past_rho = α = β = ω = one(T)
-  i = one(ITER)
-  v = zeros(T, n)
-  p = zeros(T, n)
-
-  # undef are faster but all in all this is useless xd
-  y = Vector{T}(undef, n)
-  s = Vector{T}(undef, n)
-  z = Vector{T}(undef, n)
+  i = history.nIters
+  
   t = r # sztuczka - oszczędza wektor
   rho = dot(r_shadow, r)
-  while true
+  init_history!(history, debug, nIter, xIter, r, rho, ω)
+  while i <= nIter
 
     # possible issues with ω and past_rho
     β = (rho / past_rho) * (α / ω) # order?
@@ -148,29 +179,39 @@ function _bicgstab(
     p .= r .+ β .* (p .- ω .* v)
     ldiv!(y, K, p)
     mul!(v, A, y) # somehow this is way faster than my attempts to manually calc it
-    α = rho / dot(r_shadow, v)
+    αDiv = dot(r_shadow, v)
+    α = rho / αDiv
     s .= r .- α .* v
     ldiv!(z, K, s)
     mul!(t, A, z)
     # dot is always > 0 but why not observe
     # this can be more effective but somehow manually calcing it is slower
-    ω = dot(t, s) / dot(t, t)
+    ωDiv = dot(t, t)
+    ω = dot(t, s) / ωDiv
     past_rho = rho
     rho = -ω * dot(r_shadow, t)
     xIter .= xIter .+ α .* y .+ ω .* z
     r .= s .- ω .* t 
-    if debug
-      update_history(history, xIter, r, i)
-    end
-    if square_sum(r) < ϵ || i >= nIter
-      if debug
-        return (xIter, tidy_history(history, i))
-      else 
-        return xIter
-      end
-    end
     i = i + one(ITER)
+    leadingCoeff = last(p)
+    if debug
+      update_history!(history, xIter, r, i, ω, rho, αDiv, ωDiv, leadingCoeff)
+    end
+    #= if observable_failure(observablePrecision, ω, rho, αDiv, ωDiv, leadingCoeff)
+      println("RESET")
+      history.status = reset
+      history.nResets = history.nResets + one(ITER)
+      history.nIters = i
+      return
+    end =#
+    if square_sum(r) < ϵ
+      history.status = converged
+      history.nIters = i
+      return
+    end
   end
+  history.status = reached_limit
+  history.nIters = nIter
 end
 
 function bicgstab(
@@ -179,7 +220,7 @@ function bicgstab(
     kwargs...
   ) where {T <: Number}
 
-  bicgstab!(zeros(length(b)), A, b; kwargs...)
+  bicgstab!(zeros(T, length(b)), A, b; kwargs...)
 end
 
 function bicgstab!(
@@ -188,13 +229,40 @@ function bicgstab!(
     b :: AbstractVector{T};
     perturbateX :: Bool = true,
     τ :: T = 0.001,
+    nIter :: ITER = UInt16(1000),
+    debug :: Bool = false,
     kwargs...
-  ) where {T <: Number}
+  ) where {T <: Number, ITER <: Number}
 
-  if (perturbateX)
-    perturbation = rand(T, length(xIter))
-    xIter .= τ .* norm(xIter, 2) .*  perturbation / norm(perturbation, 2) 
+  history = History{T, ITER}()
+
+  n = length(xIter)
+  v = zeros(T, n)
+  p = zeros(T, n)
+  # undef are faster but all in all this is useless xd
+  y = Vector{T}(undef, n)
+  s = Vector{T}(undef, n)
+  z = Vector{T}(undef, n)
+
+  while is_bicgstab_continuing(history)
+    
+    if (perturbateX)
+      perturbation = rand(T, length(xIter))
+      xIter .= τ .* norm(xIter, 2) .*  perturbation / norm(perturbation, 2) 
+    end
+
+    _bicgstab(xIter, A, b, history, nIter, debug, v, p, y, s, z; kwargs...)
   end
-  _bicgstab(xIter, A, b; kwargs...)
+  
+  if debug
+    return (xIter, history)
+  end
+  xIter
+end
+
+function is_bicgstab_continuing(
+    history :: History
+  ) :: Bool 
+  history.status == reset || history.status == running
 end
 
