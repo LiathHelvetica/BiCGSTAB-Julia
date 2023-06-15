@@ -1,77 +1,91 @@
+using LinearAlgebra, SparseArrays
 import IncompleteLU: ILUFactorization
-import SparseArrays: SparseMatrixCSC, sparse
 
-export incomplete_cholesky
+export incomplete_cholesky, modified_incomplete_cholesky
 
-# nnz - liczba niezerowych elementów
-# findnz - do postaci transportowej - raczej nie będzie efektywne
-# rowvals - wektor - dla kolejnych wartości jaki rząd ich?
-# nzrange(A, i) - range - range wartości z tablicy wartości - gdzie się one znajdują dla kolumny i
-# nonzeros - wektor wartości niezerowych
-#
-# W sumie i tak aby zainicjalizować macierz to trzeba podać ją w postaci 3 wektorów
-#
-# A.colptr - w którym indeksie zaczyna się kolumna
-# A.rowval - tej samej długości co vec elementów - w jakim rzędzie się znajdują
-#
-function incomplete_cholesky(A :: SparseMatrixCSC{T, TID}) :: ILUFactorization{T, TID} where {T <: Number, TID <: Integer}
-  out_row_ids :: Vector{TID} = zeros(TID, nnz(A))
-  out_col_ids :: Vector{TID} = zeros(TID, nnz(A))
-  out_vals :: Vector{T} = zeros(T, nnz(A))
-  c = 1
-  i = 1
-  col_pointers = A.colptr
-  row_pointers = A.rowval
-  vals = A.nzval
-
-  # might be good to preallocate Vectors - even if overkill
-
-  while c < length(col_pointers)
-    for val_id in range(col_pointers[c], col_pointers[c + 1] - 1)
-      # column - c
-      # row - row_pointers[val_id]
-      if c <= row_pointers[val_id]
-        out_row_ids[i] = row_pointers[val_id]
-        out_col_ids[i] = c
-        out_vals[i] = vals[val_id]
-        i = i + 1
-      end
-    end
-    c = c + 1
-  end
-
-  i = i - 1
-  out = sparse(
-         out_row_ids[1 : i],
-         out_col_ids[1 : i],
-         out_vals[1 : i],
-         A.m,
-         A.n
-        )
-
-  ILUFactorization(out, out)
-
-  #=
-  c = 1
-  while c < length(col_pointers) - 1
-    column_sum = zero(T)
-    diag_ele = one(T)
-    for val_id in range(col_pointers[c], col_pointers[c + 1])
-      # column - c
-      # row - row_pointers[val_id]
-      if row_pointers[val_id] < c
-        column_sum = column_sum + vals[val_id] / diag_ele
-      elseif row_pointers[val_id] == c
-        diag_ele = vals[val_id]
-      end
-    end
-    for val_id in range(col_pointers[c], col_pointers[c + 1])
-      if row_pointers[val_id] < c
-        out = vals[val_id] / diag_ele
+function incomplete_cholesky(A::SparseMatrixCSC{T, TID})::ILUFactorization{T, TID} where {T <: Number, TID <: Integer}
+    n = size(A, 1)
+    L = zeros(T, n, n)
+    
+    for k = 1:n
+        L[k, k] = √(A[k, k])
         
-      end
+        for i = k+1:n
+            if A[i, k] != zero(T)
+                L[i, k] = A[i, k] / L[k, k]
+            end
+        end
+        
+        for j = k+1:n
+            for i = j:n
+                if A[i, j] != zero(T)
+                    A[i, j] -= L[i, k] * L[j, k]
+                end
+            end
+        end
     end
-    c = c + 1
-  end
-  =#
+    
+    for i = 1:n
+        for j = i+1:n
+            L[i, j] = zero(T)
+        end
+    end
+    
+    L_sparse = sparse(L)
+    lu_factorization = ILUFactorization(A, L_sparse)
+    return lu_factorization
+
+end
+
+function modified_incomplete_cholesky(A::SparseMatrixCSC{T, TID})::ILUFactorization{T, TID} where {T <: Number, TID <: Integer}
+    n = size(A, 1)
+    L = spzeros(T, n, n)
+    ffj = 0.01
+    sqrt_Ajj = sqrt(A[1, 1])  # LICZYMY POZA PĘTLĄ
+
+
+    w = similar(L, n)  # PRELOKACJA POZA PĘTLĄ
+
+    for j = 1:n
+        L[j, j] = sqrt_Ajj
+        
+        @views w[1:j] .= 0
+        @views w[j+1:end] .= A[j+1:end, j]
+        
+        for k = 1:j-1
+            if L[j, k] == zero(T)
+                continue
+            end
+
+            @views w[j+1:n] .-= L[j, k] * L[k, j+1:n]
+        end
+
+        for i = j+1:n
+            w[i] /= L[j, j]
+        end
+
+        ffj *= norm(w, 2)
+
+        for i = j+1:n
+            if abs(w[i]) < ffj
+                w[i] = zero(T)
+            end
+        end
+
+        p = Int(floor(maximum(A[:, j])))
+
+      #  stosujemy żeby zaoszczędzić pamięć ale zwiększamy czas - zależy czego oczekujemy
+      #  @inbounds for k = 1:p
+        for k = 1:p
+            L[k, j] -= w[k]
+        end
+
+       # @inbounds for i = j+1:n
+        for i = j+1:n
+            A[i, i] -= L[i, j]^2
+        end
+    end
+
+    return ILUFactorization(A, L)
+
 end

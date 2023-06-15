@@ -58,6 +58,7 @@ import IncompleteLU: ILUFactorization
 export bicgstab, bicgstab!
 
 @enum STATUS converged=0 running=1 reset=2 reached_limit=3
+@enum R_SHADOW_STRATEGY initial=0 perturbated=1 random=2 enriched=3
 
 mutable struct History{T <: Number, ITER <: Number}
   
@@ -146,6 +147,24 @@ function observable_failure(
   ω < observablePrecision || rho < observablePrecision || αDiv < observablePrecision || ωDiv < observablePrecision || leadingCoeff < observablePrecision
 end
 
+function get_r_shadow(
+  r :: AbstractVector{T},
+  b :: AbstractVector{T},
+  rShadowStrategy :: R_SHADOW_STRATEGY
+  ) where {T <: Number}
+
+  if rShadowStrategy == initial 
+    return copy(r)
+  elseif rShadowStrategy == perturbated
+    perturbation = rand(T, length(r))
+    return r .+ (norm(r, 2) / norm(perturbation, 2)) .* perturbation 
+  elseif rShadowStrategy == random
+    return rand(T, length(r))
+  end
+  # enriched
+  return r .+ (norm(r, 2) / norm(b, 2)) .* b
+end
+
 function _bicgstab( 
     xIter :: AbstractVector{T},
     A :: AbstractMatrix{T},
@@ -160,11 +179,16 @@ function _bicgstab(
     z :: AbstractVector{T};
     K :: Union{AbstractMatrix{T}, ILUFactorization{T, TID}, UniformScaling{Bool}} = I,
     ϵ :: T = sqrt(eps(T)),
+    resetEvery :: ITER = UInt16(1002),
+    # perturbated has decent effect for FVM-noprec, random works great, 
+    rShadowStrategy :: R_SHADOW_STRATEGY = random,
     observablePrecision :: T = 10e-4 # questionable
   ) where {T <: Number, TID <: Integer, ITER <: Number}
 
-  r = b - A * xIter
-  r_shadow = copy(r) # questionable - should be different value
+
+  r = Vector{Float64}(undef, length(xIter))
+  r .= b .- mul!(r, A, xIter)
+  r_shadow = get_r_shadow(r, b, rShadowStrategy)
   past_rho = α = β = ω = one(T)
   i = history.nIters
   
@@ -191,12 +215,18 @@ function _bicgstab(
     past_rho = rho
     rho = -ω * dot(r_shadow, t)
     xIter .= xIter .+ α .* y .+ ω .* z
-    r .= s .- ω .* t 
+    if i % resetEvery == resetEvery - one(resetEvery)
+      r .= b .- mul!(r, A, xIter)
+    else
+      r .= s .- ω .* t 
+    end
     i = i + one(ITER)
     leadingCoeff = last(p)
     if debug
       update_history!(history, xIter, r, i, ω, rho, αDiv, ωDiv, leadingCoeff)
     end
+    # have fun with resets later
+    # reset on certain iterations
     #= if observable_failure(observablePrecision, ω, rho, αDiv, ωDiv, leadingCoeff)
       println("RESET")
       history.status = reset
@@ -246,7 +276,7 @@ function bicgstab!(
 
   while is_bicgstab_continuing(history)
     
-    if (perturbateX)
+    if (perturbateX) # what?????????????????
       perturbation = rand(T, length(xIter))
       xIter .= τ .* norm(xIter, 2) .*  perturbation / norm(perturbation, 2) 
     end
