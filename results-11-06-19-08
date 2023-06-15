@@ -251,3 +251,211 @@ BenchmarkTools.Trial: 3219 samples with 1 evaluation.
   1.1 ms          Histogram: frequency by time           3 ms <
 
  Memory estimate: 62.05 KiB, allocs estimate: 18.
+
+##########################################################################
+##########################################################################
+##########################################################################
+
+## Cholesky 
+## wyniki dla macierzy symetrycznych
+## zmodyfikowana wersja zdecydowanie lepsza pamięciowo i lepsza czasowo niż zwykła
+## zmodyfikowana wersja lepsza pamięciowo od lu ale gorsza czasowo 
+## zmodyfikowana wersja cholesky'ego dla problemu fdm osiąga niższy błąd niż lu dla problemu fem zbliżony
+
+
+Fe
+
+@benchmark  ilu(A_fe)
+
+BenchmarkTools.Trial: 1236 samples with 1 evaluation.
+ Range (min … max):  1.493 ms …   8.148 ms  ┊ GC (min … max): 0.00% … 31.84%
+ Time  (median):     3.995 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.031 ms ± 793.307 μs  ┊ GC (mean ± σ):  1.72% ±  6.39%
+
+  ▁                        █▇▅▄▁                               
+  █▆▆▆▅▆▇▇▅▅▄▆▅▄▅▅▄▄▄▇▆█▅▆███████▇▇▅▆▄▅▅▄▄▁▄▅▄▅▅▅▁▅▄▄▅▅▅▅▆▇▆▅ █
+  1.49 ms      Histogram: log(frequency) by time      7.16 ms <
+
+ Memory estimate: 1.42 MiB, allocs estimate: 56.
+
+@benchmark  incomplete_cholesky(A_fe)
+
+BenchmarkTools.Trial: 2 samples with 1 evaluation.
+ Range (min … max):  3.008 s …   3.081 s  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     3.044 s              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   3.044 s ± 51.542 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  █                                                       █  
+  █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
+  3.01 s         Histogram: frequency by time        3.08 s <
+
+ Memory estimate: 454.22 KiB, allocs estimate: 31.
+
+@benchmark  modified_incomplete_cholesky(A_fe)
+
+BenchmarkTools.Trial: 3 samples with 1 evaluation.
+ Range (min … max):  2.141 s …   2.194 s  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     2.191 s              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   2.175 s ± 30.147 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  █                                                    █  █  
+  █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁█ ▁
+  2.14 s         Histogram: frequency by time        2.19 s <
+
+ Memory estimate: 1.14 MiB, allocs estimate: 14379.
+
+@benchmark bicgstab(A_fe, b_fe, K = F_fe)
+
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  169.800 μs …   6.161 ms  ┊ GC (min … max): 0.00% … 93.18%
+ Time  (median):     329.300 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   347.530 μs ± 184.270 μs  ┊ GC (mean ± σ):  1.94% ±  3.52%
+
+                         ▇█▇▇▆▅▄▄▃▂▂▂▁▁▁      ▁▁▁               ▂
+  ▅▃▄▃▃▁▁▄▃▃▃▁▄▁▄▃▄▄▁▃▄▁▇█████████████████▇██████▇▇▇▇▇▆▄▇▇▅▆▆▆▆ █
+  170 μs        Histogram: log(frequency) by time        551 μs <
+
+ Memory estimate: 105.73 KiB, allocs estimate: 23.
+
+@benchmark bicgstab(A_fe, b_fe, K = F2_fe)
+
+BenchmarkTools.Trial: 31 samples with 1 evaluation.
+ Range (min … max):  158.774 ms … 172.550 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     162.342 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   162.203 ms ±   2.573 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+         █       ▂  █                                            
+  ▅▅▁▅▁███▁▅▁▁▁▁▅█▅▅█▅▅▁▁█▁▁▅▁▁▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▅ ▁
+  159 ms           Histogram: frequency by time          173 ms <
+
+ Memory estimate: 105.73 KiB, allocs estimate: 23.
+
+@benchmark bicgstab(A_fe, b_fe, K = F3_fe)
+
+BenchmarkTools.Trial: 721 samples with 1 evaluation.
+ Range (min … max):  5.583 ms …  12.364 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     6.830 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   6.924 ms ± 441.128 μs  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+                       ▄█▄▂                                    
+  ▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▂▁▂▂▅████▇▅▅▃▃▃▃▃▃▂▂▂▂▂▁▁▂▁▂▂▂▂▁▂▁▁▁▁▁▁▂▁▁▂ ▃
+  5.58 ms         Histogram: frequency by time        8.72 ms <
+
+ Memory estimate: 105.73 KiB, allocs estimate: 23.
+
+x =  bicgstab(A_fe, b_fe, K = F_fe)
+
+r = b_fe - A_fe * x
+
+@printf("Residual norm: %8.1e\n", norm(r))
+
+x =  bicgstab(A_fe, b_fe, K = F2_fe)
+
+r = b_fe - A_fe * x
+
+@printf("Residual norm: %8.1e\n", norm(r))
+
+x =  bicgstab(A_fe, b_fe, K = F3_fe)
+
+r = b_fe - A_fe * x
+
+@printf("Residual norm: %8.1e\n", norm(r))
+
+Residual norm:  6.8e-06
+Residual norm:  5.3e+01
+Residual norm:  7.3e-05
+
+Fd
+
+@benchmark  ilu(A_fd)
+
+BenchmarkTools.Trial: 713 samples with 1 evaluation.
+ Range (min … max):  3.139 ms …  11.689 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     6.881 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   6.995 ms ± 864.663 μs  ┊ GC (mean ± σ):  1.76% ± 5.44%
+
+                                ▁▆█▆▅▃▁                        
+  ▄▁▁▅▅▅▄▄▁▄▄▄▅▁▁▄▁▁▁▇▁▇▇▇▆▇▁▆▇▇███████▇█▅▆▅▅▄▁▁▅▆▄▆█▇▆▇▆▆▆▄▆ ▇
+  3.14 ms      Histogram: log(frequency) by time      9.89 ms <
+
+ Memory estimate: 3.36 MiB, allocs estimate: 60.
+
+@benchmark  incomplete_cholesky(A_fd)
+
+BenchmarkTools.Trial: 1 sample with 1 evaluation.
+ Single result which took 5.256 s (0.00% GC) to evaluate,
+ with a memory estimate of 455.84 KiB, over 31 allocations.
+
+@benchmark  modified_incomplete_cholesky(A_fd)
+
+BenchmarkTools.Trial: 2 samples with 1 evaluation.
+ Range (min … max):  4.625 s …    4.944 s  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     4.785 s               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.785 s ± 225.527 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+  █                                                        █  
+  █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
+  4.63 s         Histogram: frequency by time         4.94 s <
+
+ Memory estimate: 1.39 MiB, allocs estimate: 18799.
+
+@benchmark bicgstab(A_fd, b_fd, K = F_fd)
+
+BenchmarkTools.Trial: 4950 samples with 1 evaluation.
+ Range (min … max):  471.500 μs …   6.055 ms  ┊ GC (min … max): 0.00% … 79.85%
+ Time  (median):     948.700 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   998.262 μs ± 251.670 μs  ┊ GC (mean ± σ):  0.83% ±  3.55%
+
+  ▂                     ▄██▆▅▅▄▃▄▃▃▁▂▁▁▁ ▁                      ▁
+  ██▇▆▅▄▂▅▅▅▆▄▃▄▄▄▅▅▆▆▆▅█████████████████████▅▆▆▆▅▄▃▄▅▅▆▂▆▆▇███ █
+  472 μs        Histogram: log(frequency) by time       1.64 ms <
+
+ Memory estimate: 137.98 KiB, allocs estimate: 23.
+
+@benchmark bicgstab(A_fd, b_fd, K = F2_fd)
+
+BenchmarkTools.Trial: 28 samples with 1 evaluation.
+ Range (min … max):  170.697 ms … 193.773 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     179.425 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   180.810 ms ±   4.931 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+
+                 ▃   █▃ █ ▃▃  ▃                                  
+  ▇▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▇▇██▇█▇██▁▇█▁▁▁▁▁▇▁▁▁▁▁▇▁▁▁▇▁▁▁▁▇▁▁▁▁▁▇▁▁▁▁▇ ▁
+  171 ms           Histogram: frequency by time          194 ms <
+
+ Memory estimate: 137.98 KiB, allocs estimate: 23.
+
+@benchmark bicgstab(A_fd, b_fd, K = F3_fd)
+
+BenchmarkTools.Trial: 1016 samples with 1 evaluation.
+ Range (min … max):  3.634 ms …   9.286 ms  ┊ GC (min … max): 0.00% … 47.37%
+ Time  (median):     4.781 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   4.907 ms ± 510.415 μs  ┊ GC (mean ± σ):  0.16% ±  2.00%
+
+               ▁▇█▇▅▄▂▂▁▁▁                                     
+  ▄▁▁▅▄▄▁▄▅▅▅▅▇████████████▆▆▆▅▄▄▅▅▅▁▄▄▁▄▁▅▄▄▄▁▁▄▄▁▁▄▁▄▁▅▁▁▁▅ █
+  3.63 ms      Histogram: log(frequency) by time      7.87 ms <
+
+ Memory estimate: 137.98 KiB, allocs estimate: 23.
+
+x =  bicgstab(A_fd, b_fd, K = F_fd)
+
+r = b_fd - A_fd * x
+
+@printf("Residual norm: %8.1e\n", norm(r))
+
+x =  bicgstab(A_fd, b_fd, K = F2_fd)
+
+r = b_fd - A_fd * x
+
+@printf("Residual norm: %8.1e\n", norm(r))
+
+x =  bicgstab(A_fd, b_fd, K = F3_fd)
+
+r = b_fd - A_fd * x
+
+@printf("Residual norm: %8.1e\n", norm(r))
+
+Residual norm:  3.5e-05
+Residual norm:  5.6e+01
+Residual norm:  8.8e-06
