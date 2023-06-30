@@ -1,0 +1,15 @@
+Tabela, pamięć i czas przy zadanym dużym rozmiarze problemu
+ - wszystkie 3 metody
+ - wszystkie 3 metody, prekondycjonowane ILU 
+ - wszystkie 3 metody, prekondycjonowane Cholesky
+ - wszystkie 3 metody, prekondycjonowane Modified Cholesky
+
+Tabela, pamięć i czas przy zadanym dużym rozmiarze problemu
+ - wszystkie sposoby z r_shadow
+ - bez prekondycjonera, ILU, Cholesky, Modified Cholesky
+
+Czas na przestrzeni złożoności problemu
+Pamięć na przestrzeni złożoności problemu
+
+Spadek błędu w iteracji
+

@@ -53,7 +53,7 @@ end
 
   if debug
     push!(history.xs, xIter)
-    push!(history.residuals, square_sum(r))
+    push!(history.residuals, norm(r, 2))
     push!(history.rhos, rho)
     push!(history.ωs, ω)
   end 
@@ -73,7 +73,7 @@ end
 
   id = i + one(i)
   push!(history.xs, copy(xIter))
-  push!(history.residuals, square_sum(r))
+  push!(history.residuals, norm(r, 2))
   push!(history.ωs, ω)
   push!(history.rhos, rho)
   push!(history.αDivs, αDiv)
@@ -125,7 +125,7 @@ end
     z :: AbstractVector{T};
     K :: Union{AbstractMatrix{T}, ILUFactorization{T, TID}, UniformScaling{Bool}} = I,
     ϵ :: T = convert(T, 10e-11),
-    resetEvery :: ITER = UInt16(1002),
+    resetEvery :: ITER = 1002,
     rShadowStrategy :: R_SHADOW_STRATEGY = initial,
     observablePrecision :: T = 10e-4 
   ) where {T <: Number, TID <: Integer, ITER <: Number}
